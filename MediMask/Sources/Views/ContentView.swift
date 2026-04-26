@@ -23,28 +23,32 @@ struct ContentView: View {
     @State private var breathe = false
     @State private var scanLineOffset: CGFloat = 0
     @State private var buttonPressed = false
-    @State private var orbPhase: CGFloat = 0
+    @State private var snowPhase: CGFloat = 0
     @State private var ringRotation: Double = 0
-    @State private var particlePhase: CGFloat = 0
+    @State private var frostBreath: Bool = false
 
-    private let accentBlue = Color(red: 0.29, green: 0.42, blue: 0.97)
-    private let accentPurple = Color(red: 0.48, green: 0.32, blue: 0.95)
-    private let accentCyan = Color(red: 0.25, green: 0.65, blue: 0.96)
-    private let bgDark = Color(red: 0.06, green: 0.07, blue: 0.16)
-    private let bgMid = Color(red: 0.10, green: 0.11, blue: 0.22)
+    // ICE palette
+    private let iceTeal = Color(red: 0.31, green: 0.69, blue: 0.72)
+    private let iceLight = Color(red: 0.55, green: 0.82, blue: 0.85)
+    private let iceDark = Color(red: 0.05, green: 0.12, blue: 0.15)
+    private let iceMid = Color(red: 0.08, green: 0.18, blue: 0.22)
+    private let frostWhite = Color(red: 0.85, green: 0.95, blue: 0.97)
 
     var body: some View {
         ZStack {
-            // Deep gradient background
+            // Frozen gradient
             LinearGradient(
-                colors: [bgDark, bgMid, bgDark],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                colors: [iceDark, iceMid, iceDark],
+                startPoint: .top,
+                endPoint: .bottom
             )
             .ignoresSafeArea()
 
-            // Living background orbs
-            backgroundOrbs
+            // Snow particles
+            snowfall
+
+            // Frost mist
+            frostMist
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 40) {
@@ -79,65 +83,67 @@ struct ContentView: View {
                 breathe = true
             }
             withAnimation(.linear(duration: 10).repeatForever(autoreverses: false)) {
-                orbPhase = 1
+                snowPhase = 1
             }
             withAnimation(.linear(duration: 25).repeatForever(autoreverses: false)) {
                 ringRotation = 360
             }
-            withAnimation(.linear(duration: 4).repeatForever(autoreverses: true)) {
-                particlePhase = 1
+            withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) {
+                frostBreath = true
             }
         }
     }
 
-    // MARK: - Background
+    // MARK: - Snow
 
-    private var backgroundOrbs: some View {
+    private var snowfall: some View {
         GeometryReader { geo in
-            // Large primary orb
+            ForEach(0..<15, id: \.self) { i in
+                let seed = Double(i) * 1.618
+                let x = seed.truncatingRemainder(dividingBy: 1.0)
+                let speed = 0.25 + Double(i % 4) * 0.12
+                let size = CGFloat(1 + i % 3)
+                Circle()
+                    .fill(frostWhite.opacity(speed * 0.4))
+                    .frame(width: size, height: size)
+                    .position(
+                        x: geo.size.width * CGFloat(x) + sin(Double(snowPhase) * .pi * 2 + seed * 3) * 12,
+                        y: geo.size.height * CGFloat(
+                            (Double(snowPhase) * speed + seed).truncatingRemainder(dividingBy: 1.0)
+                        )
+                    )
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
+    // MARK: - Frost mist
+
+    private var frostMist: some View {
+        ZStack {
             Circle()
                 .fill(
                     RadialGradient(
-                        colors: [accentBlue.opacity(0.15), .clear],
+                        colors: [iceTeal.opacity(0.12), .clear],
                         center: .center, startRadius: 0, endRadius: 180
                     )
                 )
                 .frame(width: 360, height: 360)
-                .position(
-                    x: geo.size.width * 0.7 + sin(orbPhase * .pi * 2) * 40,
-                    y: geo.size.height * 0.15 + cos(orbPhase * .pi * 2) * 25
-                )
+                .offset(x: 80, y: -60)
                 .blur(radius: 60)
+                .opacity(frostBreath ? 0.8 : 0.3)
 
-            // Purple orb
             Circle()
                 .fill(
                     RadialGradient(
-                        colors: [accentPurple.opacity(0.1), .clear],
+                        colors: [iceLight.opacity(0.08), .clear],
                         center: .center, startRadius: 0, endRadius: 140
                     )
                 )
                 .frame(width: 280, height: 280)
-                .position(
-                    x: geo.size.width * 0.2 + cos(orbPhase * .pi * 2 + 2) * 35,
-                    y: geo.size.height * 0.6 + sin(orbPhase * .pi * 2 + 2) * 30
-                )
+                .offset(x: -60, y: 200)
                 .blur(radius: 50)
-
-            // Cyan accent orb
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [accentCyan.opacity(0.08), .clear],
-                        center: .center, startRadius: 0, endRadius: 100
-                    )
-                )
-                .frame(width: 200, height: 200)
-                .position(
-                    x: geo.size.width * 0.5 + sin(orbPhase * .pi * 2 + 4) * 30,
-                    y: geo.size.height * 0.85 + cos(orbPhase * .pi * 2 + 4) * 20
-                )
-                .blur(radius: 40)
+                .opacity(frostBreath ? 0.6 : 0.2)
         }
         .allowsHitTesting(false)
     }
@@ -146,18 +152,17 @@ struct ContentView: View {
 
     private var headerSection: some View {
         VStack(spacing: 20) {
-            // Floating logo with animated rings
             ZStack {
-                // Outer rotating ring
+                // Frost ring
                 Circle()
                     .strokeBorder(
                         AngularGradient(
                             colors: [
-                                accentBlue.opacity(0.3),
-                                accentPurple.opacity(0.15),
-                                accentCyan.opacity(0.3),
-                                accentBlue.opacity(0.05),
-                                accentBlue.opacity(0.3)
+                                iceTeal.opacity(0.3),
+                                iceLight.opacity(0.15),
+                                frostWhite.opacity(0.25),
+                                iceTeal.opacity(0.05),
+                                iceTeal.opacity(0.3)
                             ],
                             center: .center
                         ),
@@ -166,39 +171,39 @@ struct ContentView: View {
                     .frame(width: 90, height: 90)
                     .rotationEffect(.degrees(ringRotation))
 
-                // Breathing glow
                 Circle()
-                    .fill(accentBlue.opacity(breathe ? 0.12 : 0.04))
+                    .fill(iceTeal.opacity(breathe ? 0.12 : 0.04))
                     .frame(width: 68, height: 68)
                     .blur(radius: 8)
 
-                // Icon
                 Image(systemName: "eye.slash")
                     .font(.system(size: 28, weight: .light))
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [accentCyan, accentBlue],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                            colors: [frostWhite, iceTeal],
+                            startPoint: .top,
+                            endPoint: .bottom
                         )
                     )
             }
 
-            VStack(spacing: 6) {
-                Text("MediMask")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
+            VStack(spacing: 8) {
+                Text("MEDIMASK")
+                    .font(.system(size: 30, weight: .heavy, design: .default).width(.compressed))
+                    .scaleEffect(x: 0.75, y: 1.4)
+                    .tracking(2)
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [.white, .white.opacity(0.8)],
+                            colors: [frostWhite, iceTeal, iceLight],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
                     )
 
-                Text("PRIVACY SHIELD")
+                Text("S U B · Z E R O")
                     .font(.system(size: 10, weight: .semibold))
-                    .tracking(5)
-                    .foregroundColor(accentCyan.opacity(0.5))
+                    .tracking(3)
+                    .foregroundColor(iceTeal.opacity(0.5))
             }
         }
         .opacity(appearAnimation ? 1 : 0)
@@ -231,12 +236,11 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Upload area (no box)
+    // MARK: - Upload
 
     private func uploadArea(preview: UIImage?) -> some View {
         VStack(spacing: 24) {
             if let img = preview {
-                // Selected image — not wrapped in picker
                 Image(uiImage: img)
                     .resizable()
                     .scaledToFill()
@@ -247,16 +251,15 @@ struct ContentView: View {
                         RoundedRectangle(cornerRadius: 24)
                             .strokeBorder(
                                 LinearGradient(
-                                    colors: [accentBlue.opacity(0.4), accentPurple.opacity(0.2), .clear],
+                                    colors: [frostWhite.opacity(0.3), iceTeal.opacity(0.2), .clear],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
                                 lineWidth: 1
                             )
                     )
-                    .shadow(color: accentBlue.opacity(0.2), radius: 30, y: 10)
+                    .shadow(color: iceTeal.opacity(0.15), radius: 30, y: 10)
 
-                // Separate small change-photo button
                 PhotosPicker(selection: $photoItem, matching: .images) {
                     HStack(spacing: 6) {
                         Image(systemName: "arrow.triangle.2.circlepath")
@@ -264,26 +267,26 @@ struct ContentView: View {
                         Text("change photo")
                             .font(.system(size: 13, weight: .medium))
                     }
-                    .foregroundColor(accentCyan.opacity(0.7))
+                    .foregroundColor(iceLight.opacity(0.7))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
-                    .background(Capsule().fill(Color.white.opacity(0.06)))
-                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.08), lineWidth: 1))
+                    .background(Capsule().fill(frostWhite.opacity(0.06)))
+                    .overlay(Capsule().strokeBorder(frostWhite.opacity(0.08), lineWidth: 1))
                 }
             } else {
-                // Floating upload invitation — picker only here
                 PhotosPicker(selection: $photoItem, matching: .images) {
                     VStack(spacing: 28) {
                         ZStack {
+                            // Ice crystal rings
                             Circle()
-                                .stroke(accentBlue.opacity(breathe ? 0.15 : 0.05), lineWidth: 1)
+                                .stroke(iceTeal.opacity(breathe ? 0.2 : 0.06), lineWidth: 1)
                                 .frame(width: 120, height: 120)
                                 .scaleEffect(breathe ? 1.1 : 0.95)
 
                             Circle()
                                 .stroke(
                                     LinearGradient(
-                                        colors: [accentCyan.opacity(0.3), accentPurple.opacity(0.15)],
+                                        colors: [frostWhite.opacity(0.25), iceTeal.opacity(0.15)],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
                                     ),
@@ -292,7 +295,7 @@ struct ContentView: View {
                                 .frame(width: 96, height: 96)
 
                             Circle()
-                                .fill(accentBlue.opacity(breathe ? 0.1 : 0.04))
+                                .fill(iceTeal.opacity(breathe ? 0.1 : 0.04))
                                 .frame(width: 72, height: 72)
                                 .blur(radius: 10)
 
@@ -300,9 +303,9 @@ struct ContentView: View {
                                 .font(.system(size: 34, weight: .light))
                                 .foregroundStyle(
                                     LinearGradient(
-                                        colors: [accentCyan, accentBlue],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
+                                        colors: [frostWhite, iceTeal],
+                                        startPoint: .top,
+                                        endPoint: .bottom
                                     )
                                 )
                         }
@@ -310,21 +313,21 @@ struct ContentView: View {
                         VStack(spacing: 8) {
                             Text("Upload Medical Image")
                                 .font(.system(size: 20, weight: .semibold, design: .rounded))
-                                .foregroundColor(.white.opacity(0.9))
+                                .foregroundColor(frostWhite.opacity(0.9))
 
                             Text("tap to select from your library")
                                 .font(.system(size: 14))
-                                .foregroundColor(.white.opacity(0.35))
+                                .foregroundColor(frostWhite.opacity(0.3))
                         }
 
-                        HStack(spacing: 8) {
+                        // Ice crystal dots
+                        HStack(spacing: 10) {
                             ForEach(0..<3, id: \.self) { i in
-                                Circle()
-                                    .fill(accentBlue.opacity(0.3))
-                                    .frame(width: 4, height: 4)
-                                    .offset(y: breathe ? -3 : 3)
+                                RoundedRectangle(cornerRadius: 1)
+                                    .fill(iceTeal.opacity(0.4))
+                                    .frame(width: 2, height: breathe ? 8 : 4)
                                     .animation(
-                                        .easeInOut(duration: 1.5)
+                                        .easeInOut(duration: 1.2)
                                             .repeatForever(autoreverses: true)
                                             .delay(Double(i) * 0.2),
                                         value: breathe
@@ -349,11 +352,10 @@ struct ContentView: View {
         .offset(y: appearAnimation ? 0 : 20)
     }
 
-    // MARK: - Processing area
+    // MARK: - Processing
 
     private func processingArea(_ img: UIImage) -> some View {
         VStack(spacing: 24) {
-            // Image with scan effect
             ZStack {
                 Image(uiImage: img)
                     .resizable()
@@ -363,15 +365,14 @@ struct ContentView: View {
                     .blur(radius: 6)
                     .overlay(
                         RoundedRectangle(cornerRadius: 24)
-                            .fill(bgDark.opacity(0.4))
+                            .fill(iceDark.opacity(0.4))
                     )
                     .overlay(
-                        // Scanning beam
                         GeometryReader { geo in
                             Rectangle()
                                 .fill(
                                     LinearGradient(
-                                        colors: [.clear, accentCyan.opacity(0.35), .clear],
+                                        colors: [.clear, frostWhite.opacity(0.25), .clear],
                                         startPoint: .top,
                                         endPoint: .bottom
                                     )
@@ -384,23 +385,21 @@ struct ContentView: View {
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 24)
-                            .strokeBorder(accentCyan.opacity(0.2), lineWidth: 1)
+                            .strokeBorder(iceTeal.opacity(0.2), lineWidth: 1)
                     )
-                    .shadow(color: accentCyan.opacity(0.1), radius: 25, y: 8)
+                    .shadow(color: iceTeal.opacity(0.1), radius: 25, y: 8)
 
-                // Floating status pill
                 VStack(spacing: 14) {
-                    // Spinner
                     ZStack {
                         Circle()
-                            .stroke(Color.white.opacity(0.06), lineWidth: 2.5)
+                            .stroke(frostWhite.opacity(0.06), lineWidth: 2.5)
                             .frame(width: 44, height: 44)
 
                         Circle()
                             .trim(from: 0, to: 0.3)
                             .stroke(
                                 LinearGradient(
-                                    colors: [accentCyan, accentBlue],
+                                    colors: [frostWhite, iceTeal],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 ),
@@ -410,15 +409,14 @@ struct ContentView: View {
                             .rotationEffect(.degrees(Double(scanLineOffset) * 1080))
                     }
 
-                    Text("Analyzing & masking")
+                    Text("Freezing data")
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundColor(.white.opacity(0.9))
+                        .foregroundColor(frostWhite.opacity(0.9))
 
-                    // Animated dots
                     HStack(spacing: 5) {
                         ForEach(0..<3, id: \.self) { i in
                             Circle()
-                                .fill(accentCyan)
+                                .fill(iceTeal)
                                 .frame(width: 5, height: 5)
                                 .opacity(Double(scanLineOffset) > Double(i) * 0.3 ? 0.8 : 0.2)
                         }
@@ -439,18 +437,16 @@ struct ContentView: View {
     private var actionButton: some View {
         Button {
             buttonPressed = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                buttonPressed = false
-            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { buttonPressed = false }
             handleBlurTap()
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: buttonIcon)
+                Image(systemName: "wand.and.stars")
                     .font(.system(size: 18, weight: .semibold))
-                Text(buttonLabel)
+                Text("Blur Photo")
                     .font(.system(size: 20, weight: .bold, design: .rounded))
             }
-            .foregroundColor(buttonEnabled ? .white : .white.opacity(0.2))
+            .foregroundColor(buttonEnabled ? iceDark : frostWhite.opacity(0.2))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 22)
             .background(
@@ -459,7 +455,7 @@ struct ContentView: View {
                         Capsule()
                             .fill(
                                 LinearGradient(
-                                    colors: [accentBlue, accentPurple.opacity(0.9)],
+                                    colors: [iceTeal, iceLight],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
@@ -468,7 +464,7 @@ struct ContentView: View {
                                 Capsule()
                                     .fill(
                                         LinearGradient(
-                                            colors: [Color.white.opacity(0.18), .clear],
+                                            colors: [frostWhite.opacity(0.3), .clear],
                                             startPoint: .top,
                                             endPoint: .center
                                         )
@@ -476,10 +472,9 @@ struct ContentView: View {
                             )
                     } else {
                         Capsule()
-                            .fill(Color.white.opacity(0.04))
+                            .fill(frostWhite.opacity(0.04))
                             .overlay(
-                                Capsule()
-                                    .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
+                                Capsule().strokeBorder(frostWhite.opacity(0.06), lineWidth: 1)
                             )
                     }
                 }
@@ -489,39 +484,34 @@ struct ContentView: View {
         .disabled(!buttonEnabled)
         .scaleEffect(buttonPressed ? 0.96 : 1.0)
         .animation(.spring(response: 0.25, dampingFraction: 0.5), value: buttonPressed)
-        .shadow(color: buttonEnabled ? accentBlue.opacity(0.25) : .clear, radius: 20, y: 8)
+        .shadow(color: buttonEnabled ? iceTeal.opacity(0.3) : .clear, radius: 20, y: 8)
         .opacity(appearAnimation ? 1 : 0)
         .offset(y: appearAnimation ? 0 : 20)
     }
 
-    private var buttonLabel: String { "Blur Photo" }
-    private var buttonIcon: String { "wand.and.stars" }
-
     private var buttonEnabled: Bool {
-        switch state {
-        case .photoSelected: return true
-        default: return false
-        }
+        if case .photoSelected = state { return true }
+        return false
     }
 
     // MARK: - Tagline
 
     private var tagline: some View {
         HStack(spacing: 8) {
-            Circle()
-                .fill(accentBlue.opacity(0.3))
-                .frame(width: 4, height: 4)
-            Text("end-to-end privacy protection")
+            RoundedRectangle(cornerRadius: 1)
+                .fill(iceTeal.opacity(0.3))
+                .frame(width: 12, height: 1)
+            Text("freeze the noise")
                 .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.white.opacity(0.2))
-            Circle()
-                .fill(accentBlue.opacity(0.3))
-                .frame(width: 4, height: 4)
+                .foregroundColor(frostWhite.opacity(0.2))
+            RoundedRectangle(cornerRadius: 1)
+                .fill(iceTeal.opacity(0.3))
+                .frame(width: 12, height: 1)
         }
         .opacity(appearAnimation ? 1 : 0)
     }
 
-    // MARK: - Processing logic
+    // MARK: - Logic
 
     private func handleBlurTap() {
         guard case .photoSelected(let source) = state else { return }
