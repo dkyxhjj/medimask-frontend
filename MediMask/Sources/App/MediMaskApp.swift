@@ -9,16 +9,23 @@ struct MediMaskApp: App {
             ZStack {
                 if isLaunching {
                     LaunchScreenView {
-                        withAnimation(.easeInOut(duration: 0.5)) {
+                        withAnimation(.easeInOut(duration: 0.7)) {
                             isLaunching = false
                         }
                     }
-                    .transition(.opacity)
+                    .transition(.asymmetric(
+                        insertion: .opacity,
+                        removal: .opacity.combined(with: .scale(scale: 1.05))
+                    ))
                 } else {
                     ContentView()
-                        .transition(.opacity)
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .scale(scale: 0.97)),
+                            removal: .opacity
+                        ))
                 }
             }
+            .preferredColorScheme(.dark)
         }
     }
 }
