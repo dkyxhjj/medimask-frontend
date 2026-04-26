@@ -30,25 +30,32 @@ struct ResultView: View {
     @State private var appearAnimation = false
     @State private var showingOriginal = false
     @State private var imageFullscreen = false
+    @State private var snowPhase: CGFloat = 0
+    @State private var frostBreath = false
     @State private var processingTime: (faceDetection: Int, ocr: Int, total: Int) = (161, 406, 2232)
 
-    private let accentBlue = Color(red: 0.29, green: 0.42, blue: 0.97)
-    private let accentPurple = Color(red: 0.48, green: 0.32, blue: 0.95)
-    private let accentCyan = Color(red: 0.25, green: 0.65, blue: 0.96)
-    private let accentGreen = Color(red: 0.3, green: 0.85, blue: 0.55)
-    private let accentRed = Color(red: 0.92, green: 0.32, blue: 0.34)
-    private let bgDark = Color(red: 0.06, green: 0.07, blue: 0.16)
-    private let bgMid = Color(red: 0.10, green: 0.11, blue: 0.22)
-    private let cardBg = Color(red: 0.11, green: 0.12, blue: 0.23)
+    // ICE palette
+    private let iceTeal = Color(red: 0.31, green: 0.69, blue: 0.72)
+    private let iceLight = Color(red: 0.55, green: 0.82, blue: 0.85)
+    private let iceDark = Color(red: 0.05, green: 0.12, blue: 0.15)
+    private let iceMid = Color(red: 0.08, green: 0.18, blue: 0.22)
+    private let frostWhite = Color(red: 0.85, green: 0.95, blue: 0.97)
+    private let iceCard = Color(red: 0.07, green: 0.16, blue: 0.20)
+    private let frozenRed = Color(red: 0.85, green: 0.35, blue: 0.38)
+    private let frozenGreen = Color(red: 0.3, green: 0.78, blue: 0.65)
 
     var body: some View {
         ZStack {
+            // Frozen background
             LinearGradient(
-                colors: [bgDark, bgMid, bgDark],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                colors: [iceDark, iceMid, iceDark],
+                startPoint: .top,
+                endPoint: .bottom
             )
             .ignoresSafeArea()
+
+            // Snow
+            snowfall
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
@@ -67,7 +74,6 @@ struct ResultView: View {
                 }
             }
 
-            // Fullscreen image overlay
             if imageFullscreen {
                 fullscreenImageOverlay
                     .transition(.opacity)
@@ -79,7 +85,36 @@ struct ResultView: View {
             withAnimation(.spring(response: 0.8, dampingFraction: 0.75)) {
                 appearAnimation = true
             }
+            withAnimation(.linear(duration: 10).repeatForever(autoreverses: false)) {
+                snowPhase = 1
+            }
+            withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) {
+                frostBreath = true
+            }
         }
+    }
+
+    // MARK: - Snow
+
+    private var snowfall: some View {
+        GeometryReader { geo in
+            ForEach(0..<12, id: \.self) { i in
+                let seed = Double(i) * 1.618
+                let x = seed.truncatingRemainder(dividingBy: 1.0)
+                let speed = 0.2 + Double(i % 4) * 0.1
+                let size = CGFloat(1 + i % 3)
+                Circle()
+                    .fill(frostWhite.opacity(speed * 0.35))
+                    .frame(width: size, height: size)
+                    .position(
+                        x: geo.size.width * CGFloat(x) + sin(Double(snowPhase) * .pi * 2 + seed * 3) * 10,
+                        y: geo.size.height * CGFloat(
+                            (Double(snowPhase) * speed + seed).truncatingRemainder(dividingBy: 1.0)
+                        )
+                    )
+            }
+        }
+        .allowsHitTesting(false)
     }
 
     // MARK: - Image Header
@@ -87,14 +122,13 @@ struct ResultView: View {
     private var imageHeader: some View {
         VStack(spacing: 0) {
             ZStack(alignment: .topLeading) {
-                // Full-width image — tap to go fullscreen
                 Image(uiImage: showingOriginal ? originalImage : (displayImage ?? blurredImage))
                     .resizable()
                     .scaledToFit()
                     .frame(maxWidth: .infinity)
                     .overlay(
                         LinearGradient(
-                            colors: [.clear, .clear, bgDark.opacity(0.6), bgDark],
+                            colors: [.clear, .clear, iceDark.opacity(0.6), iceDark],
                             startPoint: .top,
                             endPoint: .bottom
                         )
@@ -115,53 +149,53 @@ struct ResultView: View {
                             .frame(width: 40, height: 40)
                         Image(systemName: "chevron.left")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white)
+                            .foregroundColor(frostWhite)
                     }
                 }
                 .padding(.top, 56)
                 .padding(.leading, 20)
 
-                // Result label + subtitle
                 VStack(spacing: 4) {
                     Spacer()
-                    Text("Result")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                    Text("RESULT")
+                        .font(.system(size: 20, weight: .heavy, design: .default).width(.compressed))
+                        .scaleEffect(x: 0.8, y: 1.3)
+                        .tracking(3)
+                        .foregroundColor(frostWhite)
                     Text("Safe-to-share copy created")
-                        .font(.system(size: 13))
-                        .foregroundColor(.white.opacity(0.5))
+                        .font(.system(size: 12))
+                        .foregroundColor(frostWhite.opacity(0.4))
                         .padding(.bottom, 14)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            // Original / Scrubbed toggle
+
+            // Toggle
             HStack(spacing: 0) {
-                imageToggleButton(title: "Original", isSelected: showingOriginal) {
+                iceToggleButton(title: "Original", isSelected: showingOriginal) {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                         showingOriginal = true
                     }
                 }
-                imageToggleButton(title: "Scrubbed", isSelected: !showingOriginal) {
+                iceToggleButton(title: "Scrubbed", isSelected: !showingOriginal) {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                         showingOriginal = false
                     }
                 }
             }
             .padding(4)
-            .background(
-                Capsule().fill(Color.white.opacity(0.06))
-            )
+            .background(Capsule().fill(frostWhite.opacity(0.06)))
             .padding(.horizontal, 24)
             .padding(.top, 8)
         }
         .opacity(appearAnimation ? 1 : 0)
     }
 
-    private func imageToggleButton(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+    private func iceToggleButton(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(isSelected ? .white : .white.opacity(0.4))
+                .foregroundColor(isSelected ? iceDark : frostWhite.opacity(0.4))
                 .padding(.horizontal, 24)
                 .padding(.vertical, 10)
                 .background(
@@ -169,7 +203,7 @@ struct ResultView: View {
                         if isSelected {
                             Capsule().fill(
                                 LinearGradient(
-                                    colors: [accentBlue, accentPurple],
+                                    colors: [iceTeal, iceLight],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
@@ -180,11 +214,11 @@ struct ResultView: View {
         }
     }
 
-    // MARK: - Fullscreen Image Overlay
+    // MARK: - Fullscreen
 
     private var fullscreenImageOverlay: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            iceDark.ignoresSafeArea()
 
             Image(uiImage: showingOriginal ? originalImage : (displayImage ?? blurredImage))
                 .resizable()
@@ -192,7 +226,6 @@ struct ResultView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .animation(.easeInOut(duration: 0.3), value: showingOriginal)
 
-            // Top bar
             VStack {
                 HStack {
                     Button {
@@ -202,35 +235,32 @@ struct ResultView: View {
                     } label: {
                         ZStack {
                             Circle()
-                                .fill(Color.white.opacity(0.12))
+                                .fill(frostWhite.opacity(0.1))
                                 .frame(width: 36, height: 36)
                             Image(systemName: "xmark")
                                 .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.white)
+                                .foregroundColor(frostWhite)
                         }
                     }
 
                     Spacer()
 
-                    // Toggle in fullscreen
                     HStack(spacing: 0) {
-                        imageToggleButton(title: "Original", isSelected: showingOriginal) {
+                        iceToggleButton(title: "Original", isSelected: showingOriginal) {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                                 showingOriginal = true
                             }
                         }
-                        imageToggleButton(title: "Scrubbed", isSelected: !showingOriginal) {
+                        iceToggleButton(title: "Scrubbed", isSelected: !showingOriginal) {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                                 showingOriginal = false
                             }
                         }
                     }
                     .padding(3)
-                    .background(Capsule().fill(Color.white.opacity(0.1)))
+                    .background(Capsule().fill(frostWhite.opacity(0.08)))
 
                     Spacer()
-
-                    // Spacer to balance the X button
                     Color.clear.frame(width: 36, height: 36)
                 }
                 .padding(.horizontal, 20)
@@ -247,15 +277,15 @@ struct ResultView: View {
         }
     }
 
-    // MARK: - Redaction Controls
+    // MARK: - Controls
 
     private var controlsSection: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Redaction Controls")
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .font(.system(size: 18, weight: .heavy, design: .default).width(.condensed))
+                .foregroundColor(frostWhite)
 
-            // Presets row
+            // Presets
             HStack(spacing: 10) {
                 ForEach(PrivacyPreset.allCases, id: \.self) { preset in
                     Button {
@@ -265,9 +295,9 @@ struct ResultView: View {
                         }
                     } label: {
                         Text(preset.rawValue.uppercased())
-                            .font(.system(size: 12, weight: .bold))
+                            .font(.system(size: 11, weight: .bold))
                             .tracking(0.5)
-                            .foregroundColor(selectedPreset == preset ? .white : .white.opacity(0.6))
+                            .foregroundColor(selectedPreset == preset ? iceDark : frostWhite.opacity(0.5))
                             .padding(.horizontal, 18)
                             .padding(.vertical, 10)
                             .background(
@@ -275,17 +305,15 @@ struct ResultView: View {
                                     if selectedPreset == preset {
                                         Capsule().fill(
                                             LinearGradient(
-                                                colors: [accentBlue, accentPurple],
+                                                colors: [iceTeal, iceLight],
                                                 startPoint: .leading,
                                                 endPoint: .trailing
                                             )
                                         )
                                     } else {
                                         Capsule()
-                                            .fill(Color.white.opacity(0.06))
-                                            .overlay(
-                                                Capsule().strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
-                                            )
+                                            .fill(frostWhite.opacity(0.04))
+                                            .overlay(Capsule().strokeBorder(frostWhite.opacity(0.08), lineWidth: 1))
                                     }
                                 }
                             )
@@ -295,13 +323,13 @@ struct ResultView: View {
 
             // Quick actions
             HStack(spacing: 10) {
-                quickActionButton(title: "BLUR ALL", icon: "eye.slash") {
+                iceQuickButton(title: "BLUR ALL", icon: "eye.slash") {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                         for i in regions.indices { regions[i].isBlurred = true }
                         reprocessImage()
                     }
                 }
-                quickActionButton(title: "KEEP ALL", icon: "eye") {
+                iceQuickButton(title: "KEEP ALL", icon: "eye") {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                         for i in regions.indices { regions[i].isBlurred = false }
                         reprocessImage()
@@ -309,33 +337,29 @@ struct ResultView: View {
                 }
             }
 
-            // Blur intensity slider
+            // Blur slider
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Text("Blur Intensity")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(frostWhite.opacity(0.6))
                     Spacer()
                     Text("\(Int(blurRadius))")
                         .font(.system(size: 14, weight: .bold, design: .monospaced))
-                        .foregroundColor(accentCyan)
+                        .foregroundColor(iceTeal)
                 }
-
                 Slider(value: Binding(
                     get: { blurRadius },
-                    set: { newValue in
-                        blurRadius = newValue
-                        reprocessImage()
-                    }
+                    set: { blurRadius = $0; reprocessImage() }
                 ), in: 5...50, step: 1)
-                .tint(accentBlue)
+                .tint(iceTeal)
             }
             .padding(.top, 4)
 
-            // Individual regions
+            // Regions
             VStack(spacing: 2) {
                 ForEach($regions) { $region in
-                    regionRow(region: $region)
+                    iceRegionRow(region: $region)
                 }
             }
         }
@@ -344,47 +368,39 @@ struct ResultView: View {
         .offset(y: appearAnimation ? 0 : 20)
     }
 
-    private func quickActionButton(title: String, icon: String, action: @escaping () -> Void) -> some View {
+    private func iceQuickButton(title: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 11, weight: .semibold))
-                Text(title)
-                    .font(.system(size: 11, weight: .bold))
-                    .tracking(0.5)
+                Image(systemName: icon).font(.system(size: 11, weight: .semibold))
+                Text(title).font(.system(size: 11, weight: .bold)).tracking(0.5)
             }
-            .foregroundColor(accentCyan.opacity(0.8))
+            .foregroundColor(iceTeal.opacity(0.8))
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .background(
                 Capsule()
-                    .fill(accentCyan.opacity(0.08))
-                    .overlay(
-                        Capsule().strokeBorder(accentCyan.opacity(0.15), lineWidth: 1)
-                    )
+                    .fill(iceTeal.opacity(0.08))
+                    .overlay(Capsule().strokeBorder(iceTeal.opacity(0.15), lineWidth: 1))
             )
         }
     }
 
-    private func regionRow(region: Binding<DetectedRegion>) -> some View {
+    private func iceRegionRow(region: Binding<DetectedRegion>) -> some View {
         HStack(spacing: 14) {
-            // Icon
             ZStack {
-                Circle()
-                    .fill(accentBlue.opacity(0.1))
-                    .frame(width: 36, height: 36)
+                Circle().fill(iceTeal.opacity(0.1)).frame(width: 36, height: 36)
                 Image(systemName: region.wrappedValue.icon)
                     .font(.system(size: 14))
-                    .foregroundColor(accentBlue)
+                    .foregroundColor(iceTeal)
             }
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(region.wrappedValue.label)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.9))
+                    .foregroundColor(frostWhite.opacity(0.9))
                 Text(region.wrappedValue.description)
                     .font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.35))
+                    .foregroundColor(frostWhite.opacity(0.3))
                     .lineLimit(1)
             }
 
@@ -399,27 +415,22 @@ struct ResultView: View {
                 Text(region.wrappedValue.isBlurred ? "BLUR" : "SHOW")
                     .font(.system(size: 11, weight: .bold))
                     .tracking(0.5)
-                    .foregroundColor(.white)
+                    .foregroundColor(region.wrappedValue.isBlurred ? iceDark : frostWhite)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
                     .background(
                         Capsule().fill(
-                            region.wrappedValue.isBlurred
-                                ? accentRed
-                                : Color.white.opacity(0.15)
+                            region.wrappedValue.isBlurred ? frozenRed : frostWhite.opacity(0.1)
                         )
                     )
             }
         }
         .padding(.vertical, 14)
         .padding(.horizontal, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(cardBg.opacity(0.5))
-        )
+        .background(RoundedRectangle(cornerRadius: 16).fill(iceCard.opacity(0.5)))
     }
 
-    // MARK: - Share Section
+    // MARK: - Share
 
     private var shareSection: some View {
         HStack(spacing: 12) {
@@ -432,32 +443,25 @@ struct ResultView: View {
                 }
             } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 14, weight: .semibold))
+                    Image(systemName: "square.and.arrow.up").font(.system(size: 14, weight: .semibold))
                     Text("Share Scrubbed\nImage")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .multilineTextAlignment(.leading)
                 }
-                .foregroundColor(.white)
+                .foregroundColor(iceDark)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(
-                    LinearGradient(
-                        colors: [accentBlue, accentPurple],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
+                    LinearGradient(colors: [iceTeal, iceLight], startPoint: .leading, endPoint: .trailing)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 16))
-                .shadow(color: accentBlue.opacity(0.25), radius: 12, y: 4)
+                .shadow(color: iceTeal.opacity(0.25), radius: 12, y: 4)
             }
 
             Button {
                 guard let img = displayImage else { return }
                 UIImageWriteToSavedPhotosAlbum(img, nil, nil, nil)
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                    saveConfirmation = true
-                }
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) { saveConfirmation = true }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
                     withAnimation { saveConfirmation = false }
                 }
@@ -468,29 +472,27 @@ struct ResultView: View {
                     Text(saveConfirmation ? "Saved!" : "Save Copy")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                 }
-                .foregroundColor(.white.opacity(0.8))
+                .foregroundColor(frostWhite.opacity(0.7))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(Color.white.opacity(0.06))
+                .background(frostWhite.opacity(0.04))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 16).strokeBorder(frostWhite.opacity(0.08), lineWidth: 1)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 16))
             }
         }
         .padding(.horizontal, 24)
         .opacity(appearAnimation ? 1 : 0)
-        .offset(y: appearAnimation ? 0 : 20)
     }
 
-    // MARK: - Detection Summary
+    // MARK: - Summary
 
     private var summarySection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Detection Summary")
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .font(.system(size: 16, weight: .heavy, design: .default).width(.condensed))
+                .foregroundColor(frostWhite)
 
             let blurredCount = regions.filter(\.isBlurred).count
             let totalCount = regions.count
@@ -498,36 +500,26 @@ struct ResultView: View {
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(regionSummary(), id: \.label) { item in
                     HStack(spacing: 10) {
-                        Circle()
-                            .fill(accentBlue.opacity(0.4))
-                            .frame(width: 6, height: 6)
+                        RoundedRectangle(cornerRadius: 1).fill(iceTeal.opacity(0.5)).frame(width: 3, height: 12)
                         Text("\(item.label): \(item.count)")
-                            .font(.system(size: 14, weight: .medium, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.7))
+                            .font(.system(size: 13, weight: .medium, design: .monospaced))
+                            .foregroundColor(frostWhite.opacity(0.6))
                     }
                 }
 
-                Rectangle()
-                    .fill(Color.white.opacity(0.06))
-                    .frame(height: 1)
-                    .padding(.vertical, 4)
+                Rectangle().fill(frostWhite.opacity(0.04)).frame(height: 1).padding(.vertical, 4)
 
                 HStack(spacing: 10) {
-                    Circle()
-                        .fill(accentCyan.opacity(0.5))
-                        .frame(width: 6, height: 6)
+                    RoundedRectangle(cornerRadius: 1).fill(iceTeal).frame(width: 3, height: 12)
                     Text("Total regions: \(totalCount)")
-                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.8))
+                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                        .foregroundColor(frostWhite.opacity(0.7))
                 }
-
                 HStack(spacing: 10) {
-                    Circle()
-                        .fill(accentRed.opacity(0.5))
-                        .frame(width: 6, height: 6)
+                    RoundedRectangle(cornerRadius: 1).fill(frozenRed.opacity(0.7)).frame(width: 3, height: 12)
                     Text("Blurred: \(blurredCount) / \(totalCount)")
-                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.8))
+                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                        .foregroundColor(frostWhite.opacity(0.7))
                 }
             }
         }
@@ -535,43 +527,36 @@ struct ResultView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(cardBg.opacity(0.4))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .strokeBorder(Color.white.opacity(0.05), lineWidth: 1)
-                )
+                .fill(iceCard.opacity(0.4))
+                .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(iceTeal.opacity(0.06), lineWidth: 1))
         )
         .padding(.horizontal, 24)
         .opacity(appearAnimation ? 1 : 0)
     }
 
-    // MARK: - Leak Warning
+    // MARK: - Leak
 
     private var leakSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("What This Data Could Leak")
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .font(.system(size: 16, weight: .heavy, design: .default).width(.condensed))
+                .foregroundColor(frostWhite)
 
             let unblurred = regions.filter { !$0.isBlurred }
             if unblurred.isEmpty {
                 HStack(spacing: 8) {
-                    Image(systemName: "checkmark.shield.fill")
-                        .foregroundColor(accentGreen)
-                    Text("No high-risk identifiers were detected in this scan.")
-                        .font(.system(size: 13))
-                        .foregroundColor(.white.opacity(0.5))
+                    Image(systemName: "checkmark.shield.fill").foregroundColor(frozenGreen)
+                    Text("No high-risk identifiers detected.")
+                        .font(.system(size: 13)).foregroundColor(frostWhite.opacity(0.4))
                 }
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(unblurred) { region in
                         HStack(spacing: 8) {
                             Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.system(size: 11))
-                                .foregroundColor(accentRed.opacity(0.8))
+                                .font(.system(size: 11)).foregroundColor(frozenRed.opacity(0.8))
                             Text("\(region.label) is visible and may leak identity.")
-                                .font(.system(size: 13))
-                                .foregroundColor(.white.opacity(0.6))
+                                .font(.system(size: 13)).foregroundColor(frostWhite.opacity(0.5))
                         }
                     }
                 }
@@ -581,53 +566,43 @@ struct ResultView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(cardBg.opacity(0.4))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .strokeBorder(Color.white.opacity(0.05), lineWidth: 1)
-                )
+                .fill(iceCard.opacity(0.4))
+                .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(iceTeal.opacity(0.06), lineWidth: 1))
         )
         .padding(.horizontal, 24)
         .opacity(appearAnimation ? 1 : 0)
     }
 
-    // MARK: - Processing Time
+    // MARK: - Timing
 
     private var timingSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Processing Time")
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .font(.system(size: 16, weight: .heavy, design: .default).width(.condensed))
+                .foregroundColor(frostWhite)
 
             VStack(alignment: .leading, spacing: 6) {
-                timingRow(label: "Face detection", value: "\(processingTime.faceDetection) ms")
-                timingRow(label: "OCR", value: "\(processingTime.ocr) ms")
-                timingRow(label: "PHI redact", value: "\(processingTime.total) ms")
+                iceTimingRow(label: "Face detection", value: "\(processingTime.faceDetection) ms")
+                iceTimingRow(label: "OCR", value: "\(processingTime.ocr) ms")
+                iceTimingRow(label: "PHI redact", value: "\(processingTime.total) ms")
             }
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(cardBg.opacity(0.4))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .strokeBorder(Color.white.opacity(0.05), lineWidth: 1)
-                )
+                .fill(iceCard.opacity(0.4))
+                .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(iceTeal.opacity(0.06), lineWidth: 1))
         )
         .padding(.horizontal, 24)
         .opacity(appearAnimation ? 1 : 0)
     }
 
-    private func timingRow(label: String, value: String) -> some View {
+    private func iceTimingRow(label: String, value: String) -> some View {
         HStack {
-            Text(label)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.white.opacity(0.5))
+            Text(label).font(.system(size: 13, weight: .medium)).foregroundColor(frostWhite.opacity(0.4))
             Spacer()
-            Text(value)
-                .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                .foregroundColor(accentCyan.opacity(0.8))
+            Text(value).font(.system(size: 13, weight: .semibold, design: .monospaced)).foregroundColor(iceTeal.opacity(0.8))
         }
     }
 
@@ -635,30 +610,10 @@ struct ResultView: View {
 
     private func generateDetections() -> [DetectedRegion] {
         [
-            DetectedRegion(
-                label: "PERSON NAME",
-                description: "Person Name – Melange Text Anonymizer",
-                icon: "person.fill",
-                isBlurred: true
-            ),
-            DetectedRegion(
-                label: "SENSITIVE TEXT",
-                description: "Sensitive Text – Melange Text Anonymizer",
-                icon: "doc.text.fill",
-                isBlurred: true
-            ),
-            DetectedRegion(
-                label: "DATE",
-                description: "Date – Temporal Pattern Matcher",
-                icon: "calendar",
-                isBlurred: true
-            ),
-            DetectedRegion(
-                label: "LOCATION",
-                description: "Location – Geospatial Pattern Detector",
-                icon: "mappin.circle",
-                isBlurred: false
-            ),
+            DetectedRegion(label: "PERSON NAME", description: "Person Name – Melange Text Anonymizer", icon: "person.fill", isBlurred: true),
+            DetectedRegion(label: "SENSITIVE TEXT", description: "Sensitive Text – Melange Text Anonymizer", icon: "doc.text.fill", isBlurred: true),
+            DetectedRegion(label: "DATE", description: "Date – Temporal Pattern Matcher", icon: "calendar", isBlurred: true),
+            DetectedRegion(label: "LOCATION", description: "Location – Geospatial Pattern Detector", icon: "mappin.circle", isBlurred: false),
         ]
     }
 
@@ -668,12 +623,10 @@ struct ResultView: View {
             for i in regions.indices {
                 regions[i].isBlurred = regions[i].label == "PERSON NAME"
                     || regions[i].label == "SENSITIVE TEXT"
-                    || regions[i].label == "DATE OF BIRTH"
+                    || regions[i].label == "DATE"
             }
         case .highPrivacy:
-            for i in regions.indices {
-                regions[i].isBlurred = true
-            }
+            for i in regions.indices { regions[i].isBlurred = true }
         }
         reprocessImage()
     }
@@ -681,17 +634,10 @@ struct ResultView: View {
     private func reprocessImage() {
         let anyBlurred = regions.contains(where: \.isBlurred)
         Task.detached(priority: .userInitiated) {
-            let result: UIImage?
-            if anyBlurred {
-                result = await applyBlur(to: originalImage, radius: blurRadius)
-            } else {
-                result = originalImage
-            }
+            let result: UIImage? = anyBlurred ? await applyBlur(to: originalImage, radius: blurRadius) : originalImage
             await MainActor.run {
                 if let result {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        displayImage = result
-                    }
+                    withAnimation(.easeInOut(duration: 0.3)) { displayImage = result }
                 }
             }
         }
@@ -709,12 +655,9 @@ struct ResultView: View {
     }
 
     private func regionSummary() -> [(label: String, count: Int)] {
-        var summary: [(label: String, count: Int)] = []
-        let grouped = Dictionary(grouping: regions, by: \.label)
-        for (label, items) in grouped.sorted(by: { $0.key < $1.key }) {
-            summary.append((label: label, count: items.count))
-        }
-        return summary
+        Dictionary(grouping: regions, by: \.label)
+            .map { (label: $0.key, count: $0.value.count) }
+            .sorted { $0.label < $1.label }
     }
 }
 
